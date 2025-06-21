@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bubble Sort Animation</title>
+    <title>Bubble Sort with Numbers</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -19,7 +19,7 @@
         .container {
             display: flex;
             align-items: flex-end;
-            height: 400px;
+            height: 300px;
             margin: 20px 0;
             gap: 2px;
         }
@@ -28,6 +28,14 @@
             width: 30px;
             transition: height 0.3s ease, background-color 0.3s ease;
             border-radius: 3px 3px 0 0;
+            position: relative;
+        }
+        .bar-value {
+            position: absolute;
+            bottom: -25px;
+            width: 100%;
+            text-align: center;
+            font-size: 12px;
         }
         .comparing {
             background: #feb236 !important;
@@ -37,6 +45,29 @@
         }
         .sorted {
             background: #88b04b !important;
+        }
+        .number-list {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .number {
+            padding: 8px 12px;
+            background: #6b5b95;
+            color: white;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+        .number.comparing {
+            background: #feb236;
+        }
+        .number.swapping {
+            background: #d64161;
+        }
+        .number.sorted {
+            background: #88b04b;
         }
         button {
             padding: 10px 20px;
@@ -51,99 +82,160 @@
         button:hover {
             background: #45a049;
         }
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
         .controls {
             margin-bottom: 20px;
+        }
+        #status {
+            margin-top: 10px;
+            font-weight: bold;
+            min-height: 20px;
         }
     </style>
 </head>
 <body>
-    <h1>Bubble Sort Animation</h1>
+    <h1>Bubble Sort Visualization</h1>
     <div class="controls">
         <button id="startBtn">Start Sorting</button>
         <button id="resetBtn">Reset</button>
+        <button id="stepBtn">Step</button>
     </div>
     <div class="container" id="visualization"></div>
-    <div id="status">Click "Start Sorting" to begin</div>
+    <div class="number-list" id="numberList"></div>
+    <div id="status">Ready to sort! Click "Start Sorting" or "Step"</div>
 
     <script>
         const container = document.getElementById('visualization');
+        const numberList = document.getElementById('numberList');
         const startBtn = document.getElementById('startBtn');
         const resetBtn = document.getElementById('resetBtn');
+        const stepBtn = document.getElementById('stepBtn');
         const statusEl = document.getElementById('status');
+        
         let bars = [];
         let isSorting = false;
+        let sortGenerator;
+        let stepMode = false;
 
         // Initialize random array
         function initArray() {
             container.innerHTML = '';
+            numberList.innerHTML = '';
             bars = [];
-            for (let i = 0; i < 15; i++) {
+            for (let i = 0; i < 10; i++) {
                 bars.push(Math.floor(Math.random() * 90) + 10);
             }
-            renderBars();
+            renderVisualization();
         }
 
-        // Render bars
-        function renderBars(highlightIndices = [], sortedIndices = []) {
+        // Render both bars and numbers
+        function renderVisualization(highlightIndices = [], sortedIndices = []) {
             container.innerHTML = '';
+            numberList.innerHTML = '';
             const maxHeight = Math.max(...bars);
             
             bars.forEach((value, index) => {
+                // Create bar
                 const bar = document.createElement('div');
                 bar.className = 'bar';
-                bar.style.height = `${(value / maxHeight) * 350}px`;
+                bar.style.height = `${(value / maxHeight) * 250}px`;
                 
+                // Add value label
+                const barValue = document.createElement('div');
+                barValue.className = 'bar-value';
+                barValue.textContent = value;
+                bar.appendChild(barValue);
+                
+                // Create number element
+                const number = document.createElement('div');
+                number.className = 'number';
+                number.textContent = value;
+                
+                // Apply highlighting
                 if (sortedIndices.includes(index)) {
                     bar.classList.add('sorted');
+                    number.classList.add('sorted');
                 } else if (highlightIndices.includes(index)) {
-                    bar.classList.add(highlightIndices.length === 2 ? 'comparing' : 'swapping');
+                    const highlightClass = highlightIndices.length === 2 ? 'comparing' : 'swapping';
+                    bar.classList.add(highlightClass);
+                    number.classList.add(highlightClass);
                 }
                 
                 container.appendChild(bar);
+                numberList.appendChild(number);
             });
         }
 
-        // Bubble Sort with animation
-        async function bubbleSort() {
-            if (isSorting) return;
-            isSorting = true;
-            startBtn.disabled = true;
-            
+        // Generator function for bubble sort steps
+        function* bubbleSortGenerator() {
             let len = bars.length;
             let sortedIndices = [];
             
             for (let i = 0; i < len; i++) {
                 for (let j = 0; j < len - i - 1; j++) {
-                    statusEl.textContent = `Comparing elements at positions ${j} and ${j+1}`;
-                    
                     // Highlight comparing bars
-                    renderBars([j, j+1], sortedIndices);
-                    await sleep(500);
+                    statusEl.textContent = `Comparing ${bars[j]} and ${bars[j+1]}`;
+                    renderVisualization([j, j+1], sortedIndices);
+                    yield;
                     
                     if (bars[j] > bars[j+1]) {
                         statusEl.textContent = `Swapping ${bars[j]} and ${bars[j+1]}`;
                         
                         // Highlight swapping bars
-                        renderBars([j, j+1], sortedIndices);
-                        await sleep(300);
+                        renderVisualization([j, j+1], sortedIndices);
+                        yield;
                         
-                        // Swap
+                        // Perform swap
                         [bars[j], bars[j+1]] = [bars[j+1], bars[j]];
                         
                         // Show swap result
-                        renderBars([j], sortedIndices);
-                        await sleep(500);
+                        renderVisualization([j], sortedIndices);
+                        yield;
                     }
                 }
                 sortedIndices.push(len - i - 1);
-                renderBars([], sortedIndices);
-                await sleep(200);
+                renderVisualization([], sortedIndices);
+                yield;
             }
             
             statusEl.textContent = 'Sorting complete!';
-            renderBars([], Array.from({length: bars.length}, (_, i) => i));
+            renderVisualization([], Array.from({length: bars.length}, (_, i) => i));
             isSorting = false;
             startBtn.disabled = false;
+            stepBtn.disabled = true;
+        }
+
+        // Start sorting (auto or step)
+        function startSorting() {
+            if (isSorting) return;
+            isSorting = true;
+            startBtn.disabled = true;
+            sortGenerator = bubbleSortGenerator();
+            
+            if (!stepMode) {
+                autoSort();
+            }
+        }
+
+        // Auto-sort with delays
+        async function autoSort() {
+            let result;
+            do {
+                result = sortGenerator.next();
+                await sleep(800);
+            } while (!result.done && isSorting);
+        }
+
+        // Step through manually
+        function stepSort() {
+            stepMode = true;
+            if (!sortGenerator) {
+                sortGenerator = bubbleSortGenerator();
+            }
+            sortGenerator.next();
         }
 
         function sleep(ms) {
@@ -151,13 +243,17 @@
         }
 
         // Event listeners
-        startBtn.addEventListener('click', bubbleSort);
+        startBtn.addEventListener('click', startSorting);
         resetBtn.addEventListener('click', () => {
-            if (!isSorting) {
-                initArray();
-                statusEl.textContent = 'Array reset. Click "Start Sorting" to begin';
-            }
+            isSorting = false;
+            sortGenerator = null;
+            stepMode = false;
+            initArray();
+            statusEl.textContent = 'Array reset. Ready to sort!';
+            startBtn.disabled = false;
+            stepBtn.disabled = false;
         });
+        stepBtn.addEventListener('click', stepSort);
 
         // Initialize
         initArray();
